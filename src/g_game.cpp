@@ -125,6 +125,7 @@ CVAR (Bool, longsavemessages, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, cl_waitforsave, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 CVAR (Bool, enablescriptscreenshot, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 CVAR (Bool, cl_restartondeath, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
+CVAR (Float, cl_horizaimassist, 2.0f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 EXTERN_CVAR (Float, con_midtime);
 
 //==========================================================================
@@ -210,7 +211,16 @@ CVAR (Bool,		freelook,		true,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Always mlook?
 CVAR (Bool,		lookstrafe,		false,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)		// Always strafe with mouse?
 CVAR (Float,	m_forward,		1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 CVAR (Float,	m_side,			2.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
- 
+
+#define ANALOG_LOOK_BASE	1280
+
+// You can change cl_analog_sensitivity_pitch's default to 1.6f if the old historical
+// behavior is preferred, but IMO that is so fast that it's practically unplayable...
+CVAR (Float, cl_analog_sensitivity_yaw,		1.f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
+CVAR (Float, cl_analog_sensitivity_pitch,	0.6f,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
+CVAR (Bool, cl_analog_run, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
+CVAR (Float, cl_analog_move_sensitivity, 1.0f, CVAR_GLOBALCONFIG|CVAR_ARCHIVE) // expose movement sensitivity for joystick config; this is multiplied by 1.5 later to ensure straferunning is consistent
+
 int 			turnheld;								// for accelerative turning 
 
 EXTERN_CVAR (Bool, invertmouse)
@@ -440,6 +450,7 @@ CCMD (invnext)
 			VMValue param = players[consoleplayer].mo;
 			VMCall(func, &param, 1, nullptr, 0);
 		}
+	    S_Sound(CHAN_AUTO, 0, "INVMOVE", 1.0, ATTN_NONE);
 	}
 }
 
@@ -452,6 +463,7 @@ CCMD(invprev)
 			VMValue param = players[consoleplayer].mo;
 			VMCall(func, &param, 1, nullptr, 0);
 		}
+	    S_Sound(CHAN_AUTO, 0, "INVMOVE", 1.0, ATTN_NONE);
 	}
 }
 
@@ -695,6 +707,10 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	if (buttonMap.ButtonDown(Button_User3))			cmd->ucmd.buttons |= BT_USER3;
 	if (buttonMap.ButtonDown(Button_User4))			cmd->ucmd.buttons |= BT_USER4;
 
+	if (buttonMap.ButtonDown(Button_SonataUp))		cmd->ucmd.buttons |= BT_SNUP;
+	if (buttonMap.ButtonDown(Button_SonataDown))	cmd->ucmd.buttons |= BT_SNDOWN;
+	if (buttonMap.ButtonDown(Button_SonataLeft))	cmd->ucmd.buttons |= BT_SNLEFT;
+
 	if (buttonMap.ButtonDown(Button_Speed))			cmd->ucmd.buttons |= BT_SPEED;
 	if (buttonMap.ButtonDown(Button_Strafe))		cmd->ucmd.buttons |= BT_STRAFE;
 	if (buttonMap.ButtonDown(Button_MoveRight))		cmd->ucmd.buttons |= BT_MOVERIGHT;
@@ -726,18 +742,40 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 		joyaxes[JOYAXIS_Pitch] = joyaxes[JOYAXIS_Forward];
 		joyaxes[JOYAXIS_Forward] = 0;
 	}
+    
+    // Rescale diagonal analog input from roughly [0.77, 0.77] to [1.0, 1.0],
+    // which enables analog sticks to be able to strafe run like a keyboard can.
+
+    // This is inaccurate to how Doom had originally handled analog input, but
+    // that's why it's an option, after all.
+
+    const float sqrtOf2Frac = 0.41421356237309504880; // sqrt(2)'s fractional value
+
+    float move_min = min<float>(fabs(joyaxes[JOYAXIS_Side]), fabs(joyaxes[JOYAXIS_Forward]));
+    float move_max = max<float>(fabs(joyaxes[JOYAXIS_Side]), fabs(joyaxes[JOYAXIS_Forward]));
+
+    float scale = cl_analog_move_sensitivity*1.5;
+    if (move_max > EQUAL_EPSILON)
+    {
+        scale += (move_min / move_max) * sqrtOf2Frac;
+    }
+
+    joyaxes[JOYAXIS_Forward] = std::clamp(joyaxes[JOYAXIS_Forward] * scale, -1.f, 1.f);
+    joyaxes[JOYAXIS_Side] = std::clamp(joyaxes[JOYAXIS_Side] * scale, -1.f, 1.f);
 
 	if (joyaxes[JOYAXIS_Pitch] != 0)
 	{
-		G_AddViewPitch(joyint(joyaxes[JOYAXIS_Pitch] * 2048));
+        G_AddViewPitch(joyint(joyaxes[JOYAXIS_Pitch] * ANALOG_LOOK_BASE * cl_analog_sensitivity_pitch));
 	}
 	if (joyaxes[JOYAXIS_Yaw] != 0)
 	{
-		G_AddViewAngle(joyint(-1280 * joyaxes[JOYAXIS_Yaw]));
+        G_AddViewAngle(joyint(-ANALOG_LOOK_BASE * cl_analog_sensitivity_yaw * joyaxes[JOYAXIS_Yaw]));
 	}
 
-	side -= joyint(sidemove[speed] * joyaxes[JOYAXIS_Side]);
-	forward += joyint(joyaxes[JOYAXIS_Forward] * forwardmove[speed]);
+    cmd->ucmd.pitch = LocalViewPitch >> 16;
+   
+    side -= joyint(joyaxes[JOYAXIS_Side] * sidemove[cl_analog_run | speed]);
+	forward += joyint(joyaxes[JOYAXIS_Forward] * forwardmove[cl_analog_run | speed]);
 	fly += joyint(joyaxes[JOYAXIS_Up] * 2048);
 
 	// Handle mice.
@@ -745,8 +783,6 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	{
 		forward += xs_CRoundToInt(mousey * m_forward);
 	}
-
-	cmd->ucmd.pitch = LocalViewPitch >> 16;
 
 	if (SendLand)
 	{
@@ -2309,7 +2345,7 @@ void G_DoAutoSave ()
 	}
 
 	readableTime = myasctime ();
-	description.Format("Autosave %s", readableTime);
+	description.Format("%s - %s", readableTime, primaryLevel->LevelName.GetChars());
 	G_DoSaveGame (false, false, file, description.GetChars());
 }
 

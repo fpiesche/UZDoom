@@ -41,7 +41,7 @@ const char *GetVersionString();
 
 /** Lots of different version numbers **/
 
-#define VERSIONSTR "4.14.3"
+#define VERSIONSTR "4.14.3-eos"
 
 // The version as seen in the Windows resource
 #define RC_FILEVERSION 4,14,3,0
@@ -91,13 +91,13 @@ const char *GetVersionString();
 #define SAVEVER 4560
 
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
-#define GAMESIG "UZDOOM"
+#define GAMESIG "eos"
 
 #ifndef LOAD_GZDOOM_4142_SAVES
     #define LOAD_GZDOOM_4142_SAVES 1
 #endif
 
-#define BASEWAD "uzdoom.pk3"
+#define BASEWAD "eos.pk3"
 // Set OPTIONALWAD to "" (null) to disable searching for it
 #define OPTIONALWAD "game_support.pk3"
 #define GZDOOM 1
@@ -105,13 +105,13 @@ const char *GetVersionString();
 
 // More stuff that needs to be different for derivatives.
 
-#define GAMENAME "UZDoom"
-#define WGAMENAME L"UZDoom"
-#define GAMENAMELOWERCASE "uzdoom"
-#define APPID "org.zdoom.UZDoom"
+#define GAMENAME "eos"
+#define WGAMENAME L"eos"
+#define GAMENAMELOWERCASE "eos"
+#define APPID "horse.msx.eos"
 #define QUERYIWADDEFAULT true
-#define FORUM_URL "http://forum.zdoom.org/"
-#define BUGS_FORUM_URL	"http://forum.zdoom.org/viewforum.php?f=2"
+#define FORUM_URL "https://msx.horse/eos/"
+#define BUGS_FORUM_URL	"https://msx.horse/eos/"
 // For QUERYIWADDEFAULT: Set to 'true' to always show dialog box on startup by default, 'false' to disable.
 // Should set to 'false' for standalone games, and set to 'true' for regular source port forks that are meant to run any game.
 
@@ -120,8 +120,6 @@ const char *GetVersionString();
 #elif defined(__HAIKU__)
 #define GAME_DIR "config/settings/" GAMENAME
 #endif
-
-#define DEFAULT_DISCORD_APP_ID "1428620310302691349"
 
 const int SAVEPICWIDTH = 216;
 const int SAVEPICHEIGHT = 162;

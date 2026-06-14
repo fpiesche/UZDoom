@@ -33,7 +33,10 @@ enum
 	Button_ShowScores,
 	Button_Speed,	
 	Button_Use,		
-	Button_MoveUp,	
+	Button_MoveUp,
+    Button_SonataUp,
+    Button_SonataDown,
+    Button_SonataLeft,
 	NUM_ACTIONS
 };
 

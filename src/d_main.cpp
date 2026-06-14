@@ -156,7 +156,6 @@ void M_SaveDefaultsFinal();
 void R_Shutdown();
 void I_ShutdownInput();
 void SetConsoleNotifyBuffer();
-void I_UpdateDiscordPresence(bool SendPresence, const char* curstatus, const char* appid, const char* steamappid);
 bool M_SetSpecialMenu(FName& menu, int param);	// game specific checks
 
 const FIWADInfo *D_FindIWAD(TArray<FString> &wadfiles, const char *iwad, const char *basewad);
@@ -300,10 +299,6 @@ CVAR(Bool, autoloadwidescreen, true, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBA
 CVAR(Bool, r_debug_disable_vis_filter, false, 0)
 CVAR(Int, vid_showpalette, 0, 0)
 
-CUSTOM_CVAR (Bool, i_discordrpc, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-{
-	I_UpdateWindowTitle();
-}
 CUSTOM_CVAR(Int, I_FriendlyWindowTitle, 1, CVAR_GLOBALCONFIG|CVAR_ARCHIVE|CVAR_NOINITCALL)
 {
 	I_UpdateWindowTitle();
@@ -1922,11 +1917,6 @@ static FString ParseGameInfo(std::vector<std::string> &pwads, const char *fn, co
 			sc.MustGetNumber();
 			GameStartupInfo.LoadWidescreen = !!sc.Number;
 		}
-		else if (!nextKey.CompareNoCase("DISCORDAPPID"))
-		{
-			sc.MustGetString();
-			GameStartupInfo.DiscordAppId = sc.String;
-		}
 		else if (!nextKey.CompareNoCase("STEAMAPPID"))
 		{
 			sc.MustGetString();
@@ -2635,7 +2625,13 @@ static const char *DoomButtons[] =
 	"showscores" ,
 	"speed" ,
 	"use" ,
-	"moveup" };
+	"moveup",
+    "sonataup",
+    "sonatadown",
+    "sonataleft",
+    "sonataright",
+    "sonatause"
+};
 
 CVAR(Bool, lookspring, true, CVAR_ARCHIVE);	// Generate centerview when -mlook encountered?
 EXTERN_CVAR(String, language)
@@ -3751,24 +3747,6 @@ static int D_DoomMain_Internal (void)
 		}
 		lastIWAD = iwad;
 
-		if (GameStartupInfo.DiscordAppId.GetChars())
-		{
-			const char* check = GameStartupInfo.DiscordAppId.GetChars();
-			uint32_t index = 0;
-			bool failedcheck = false;
-			while (!failedcheck && check[index])
-			{
-				if (check[index] < '0' || check[index] > '9')
-				{
-					Printf(TEXTCOLOR_RED "DiscordAppId must be a numerical value!\n");
-					failedcheck = true;
-				}
-				index++;
-			}
-			if (failedcheck)
-				GameStartupInfo.DiscordAppId = '\0';
-		}
-
 		if (GameStartupInfo.SteamAppId.GetChars())
 		{
 			const char* check = GameStartupInfo.SteamAppId.GetChars();
@@ -3912,7 +3890,6 @@ void D_Cleanup()
 	GameStartupInfo.Name = "";
 	GameStartupInfo.BkColor = GameStartupInfo.FgColor = GameStartupInfo.Type = 0;
 	GameStartupInfo.LoadWidescreen = GameStartupInfo.LoadLights = GameStartupInfo.LoadBrightmaps = -1;
-	GameStartupInfo.DiscordAppId = "";
 	GameStartupInfo.SteamAppId = "";
 		
 	GC::FullGC();					// clean up before taking down the object list.
@@ -3998,7 +3975,6 @@ void I_UpdateWindowTitle()
 		titlestr = GameStartupInfo.Name;
 		break;
 	default:
-		I_UpdateDiscordPresence(false, NULL, GameStartupInfo.DiscordAppId.GetChars(), GameStartupInfo.SteamAppId.GetChars());
 		I_SetWindowTitle(NULL);
 		return;
 	}
@@ -4028,10 +4004,6 @@ void I_UpdateWindowTitle()
 		}
 	}
 	*dstp = 0;
-	if (i_discordrpc)
-		I_UpdateDiscordPresence(true, copy.Data(), GameStartupInfo.DiscordAppId.GetChars(), GameStartupInfo.SteamAppId.GetChars());
-	else
-		I_UpdateDiscordPresence(false, nullptr, nullptr, nullptr);
 	I_SetWindowTitle(copy.Data());
 }
 

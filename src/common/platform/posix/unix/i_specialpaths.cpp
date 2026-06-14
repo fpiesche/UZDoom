@@ -81,7 +81,7 @@ FString GetUserFile (const char *file)
 {
 	struct stat info;
 
-	FString path = FStringf("%s/" GAMENAMELOWERCASE "/", GetConfigPath());
+	FString path = FStringf("%s/" "eos" "/", GetConfigPath());
 	path = NicePath(path.GetChars());
 
 	if (stat (path.GetChars(), &info) == -1)
@@ -128,7 +128,7 @@ FString GetUserFile (const char *file)
 
 FString M_GetAppDataPath(bool create)
 {
-	static FString path = FStringf("%s/games/" GAMENAMELOWERCASE, GetDataPath());
+	static FString path = FStringf("%s/games/" "eos", GetDataPath());
 	path = NicePath(path.GetChars());
 
 	if (create)
@@ -148,7 +148,7 @@ FString M_GetAppDataPath(bool create)
 
 FString M_GetCachePath(bool create)
 {
-	static FString path = FStringf("%s/" GAMENAMELOWERCASE, GetCachePath());
+	static FString path = FStringf("%s/" "eos", GetCachePath());
 	path = NicePath(path.GetChars());
 
 	if (create)
@@ -183,7 +183,7 @@ FString M_GetAutoexecPath()
 
 FString M_GetConfigPath(bool for_reading)
 {
-	return GetUserFile(GAMENAMELOWERCASE ".ini");
+	return GetUserFile("eos.ini");
 }
 
 //===========================================================================
@@ -197,7 +197,7 @@ FString M_GetConfigPath(bool for_reading)
 FString M_GetDocumentsPath()
 {
 #ifdef __HAIKU__
-	return FStringf("%s/" GAMENAMELOWERCASE "/", GetConfigPath());
+	return FStringf("%s/eos/", GetConfigPath());
 #else
 	return M_GetAppDataPath(false) + "/";
 #endif
@@ -217,7 +217,7 @@ FString M_GetScreenshotsPath()
 #ifdef __HAIKU__
 	static FString path = M_GetDocumentsPath() + "screenshots";
 #else
-	static FString path = FStringf("%s/Screenshots/" GAMENAME, GetPicturesPath());
+	static FString path = FStringf("%s/Screenshots/eos", GetPicturesPath());
 #endif
 	path = NicePath(path.GetChars());
 	return path;

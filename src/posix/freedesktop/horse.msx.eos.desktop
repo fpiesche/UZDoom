@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=end of starchild
+Comment=survival fantasy and manic shooting adventure
+Icon=horse.msx.eos
+Categories=Game;Shooter;RolePlaying;AdventureGame
+Exec=eos
+StartupNotify=true
+PrefersNonDefaultGPU=true
+Terminal=false
+Type=Application
+Keywords=Indie;
